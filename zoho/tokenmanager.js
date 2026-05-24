@@ -93,7 +93,7 @@ export function startTokenCheckCron(authConfig) {
 		tokenStore.refreshToken = authConfig.refreshToken;
 	}
 
-	tokenJob = cron.schedule('*/45 * * * *', async () => {
+	tokenJob = cron.schedule('*/5 * * * *', async () => {
 		try {
 			if (isTokenValid()) {
 				console.log('[token-manager] token valid');

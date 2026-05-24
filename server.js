@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { connectMongo } from './config/db.js';
 import { startJobEmailConsumer } from './redpanda/jobEmailConsumer.js';
 import { startTokenCheckCron } from './zoho/tokenmanager.js';
+import jobEmailRouter from './routes/jobEmail.js';
 import tokenLogRouter from './routes/tokenLogs.js';
 
 dotenv.config();
@@ -36,6 +37,7 @@ async function startServer() {
   try {
     await connectMongo(mongoUri);
     mongoConnected = true;
+    app.use('/job-email', jobEmailRouter);
     app.use('/token-logs', tokenLogRouter);
     console.log(`[mongo] connected to ${mongoUri}`);
 

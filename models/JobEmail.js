@@ -10,6 +10,22 @@ const jobEmailSchema = new mongoose.Schema(
 			type: mongoose.Schema.Types.Mixed,
 			required: true,
 		},
+		zohoContactListPayload: {
+			type: mongoose.Schema.Types.Mixed,
+			default: null,
+		},
+		zohoContactListResponse: {
+			type: mongoose.Schema.Types.Mixed,
+			default: null,
+		},
+		zohoContactListSyncedAt: {
+			type: Date,
+			default: null,
+		},
+		zohoContactListError: {
+			type: String,
+			default: null,
+		},
 	},
 	{
 		collection: 'job_email',

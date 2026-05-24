@@ -37,6 +37,22 @@ async function saveTokensToMongo() {
 	}
 }
 
+export async function getCurrentAccessTokenFromMongo() {
+	const tokenDoc = await TokenLog.findOne({ accessToken: { $exists: true, $ne: null } })
+		.sort({ updatedAt: -1 })
+		.lean();
+
+	if (!tokenDoc) {
+		return null;
+	}
+
+	tokenStore.accessToken = tokenDoc.accessToken || null;
+	tokenStore.refreshToken = tokenDoc.refreshToken || tokenStore.refreshToken;
+	tokenStore.expiresAt = tokenDoc.expiresAt ? new Date(tokenDoc.expiresAt).getTime() : 0;
+
+	return tokenStore.accessToken;
+}
+
 export const isTokenValid = () =>
 	tokenStore.accessToken &&
 	Date.now() < tokenStore.expiresAt - EXPIRY_BUFFER;

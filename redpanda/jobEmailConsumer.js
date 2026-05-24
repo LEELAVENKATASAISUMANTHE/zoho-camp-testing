@@ -3,7 +3,7 @@ import { createConsumer } from './setup.js';
 
 export function startJobEmailConsumer() {
 	const { start } = createConsumer({
-		topic: 'job.notification.send',
+		topic: 'job.notification.pending',
 		groupId: 'placement-email-consumer-group',
 		handler: async (payload) => {
 			await JobEmail.create({

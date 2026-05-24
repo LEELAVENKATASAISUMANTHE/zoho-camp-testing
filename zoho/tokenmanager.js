@@ -78,6 +78,8 @@ export function startTokenCheckCron(authConfig) {
 		try {
 			if (isExistingTokenValid()) {
 				console.log('[token-manager] access token is valid');
+				console.log('[token-manager] access token:', tokenStore.accessToken);
+				console.log('[token-manager] refresh token:', tokenStore.refreshToken);
 				return;
 			}
 
@@ -93,6 +95,8 @@ export function startTokenCheckCron(authConfig) {
 				refreshToken: tokenStore.refreshToken,
 			});
 			console.log('[token-manager] token refresh complete');
+			console.log('[token-manager] access token:', tokenStore.accessToken);
+			console.log('[token-manager] refresh token:', tokenStore.refreshToken);
 		} catch (error) {
 			console.error('[token-manager] minute cron check failed:', {
 				message: error.message,

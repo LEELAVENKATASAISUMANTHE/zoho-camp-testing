@@ -6,3 +6,9 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    networks:
+      - erp-core-net
+
+networks:
+  erp-core-net:
+    external: true

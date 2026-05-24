@@ -1,33 +1,28 @@
 import mongoose from 'mongoose';
 
-const tokenLogSchema = new mongoose.Schema(
+const tokenSchema = new mongoose.Schema(
   {
-    event: {
+    accessToken: {
       type: String,
       required: true,
       trim: true,
     },
-    status: {
+    refreshToken: {
       type: String,
-      default: 'info',
+      required: true,
       trim: true,
     },
-    message: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    payload: {
-      type: mongoose.Schema.Types.Mixed,
+    expiresAt: {
+      type: Date,
       default: null,
     },
   },
   {
-    collection: 'token_logs',
+    collection: 'tokens',
     timestamps: true,
   }
 );
 
-const TokenLog = mongoose.model('TokenLog', tokenLogSchema);
+const TokenLog = mongoose.model('TokenLog', tokenSchema);
 
 export default TokenLog;

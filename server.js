@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectMongo } from './config/db.js';
+import { startJobEmailConsumer } from './redpanda/jobEmailConsumer.js';
 import { startTokenCheckCron } from './zoho/tokenmanager.js';
 import tokenLogRouter from './routes/tokenLogs.js';
 
@@ -37,6 +38,9 @@ async function startServer() {
     mongoConnected = true;
     app.use('/token-logs', tokenLogRouter);
     console.log(`[mongo] connected to ${mongoUri}`);
+
+    await startJobEmailConsumer();
+    console.log('[kafka] job.notification.send consumer started');
   } catch (error) {
     mongoConnected = false;
     console.warn(`[mongo] not connected, continuing without database: ${error.message}`);

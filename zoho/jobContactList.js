@@ -1,10 +1,48 @@
 import axios from 'axios';
-import { getCurrentAccessTokenFromMongo } from './tokenmanager.js';
+import { getCurrentAccessTokenFromMongo, isTokenValid, refreshTokens } from './tokenmanager.js';
 
 const ZOHO_CREATE_LIST_URL =
 	'https://campaigns.zoho.com/api/v1.1/addlistandcontacts';
 const ZOHO_ADD_CONTACTS_URL =
 	'https://campaigns.zoho.com/api/v1.1/addlistsubscribersinbulk';
+
+function getAuthConfig() {
+	return {
+		clientId: process.env.ZOHO_CLIENT_ID || process.env.Client_ID,
+		clientSecret: process.env.ZOHO_CLIENT_SECRET || process.env.Client_Secret,
+		refreshToken:
+			process.env.ZOHO_REFRESH_TOKEN ||
+			process.env.REFRESH_TOKEN ||
+			process.env.Refresh_Token ||
+			process.env.refresh_token,
+	};
+}
+
+async function ensureValidAccessToken() {
+	// Try to get token from memory/Mongo
+	const token = await getCurrentAccessTokenFromMongo();
+
+	// If token is valid, use it
+	if (isTokenValid()) {
+		return token;
+	}
+
+	// Token is invalid or missing, refresh it
+	const authConfig = getAuthConfig();
+	if (!authConfig?.clientId || !authConfig?.clientSecret || !authConfig?.refreshToken) {
+		throw new Error('Cannot refresh token: missing auth config (clientId, clientSecret, refreshToken)');
+	}
+
+	console.log('[zoho-contact-list] token invalid or expired, refreshing...');
+
+	const refreshResult = await refreshTokens({
+		clientId: authConfig.clientId,
+		clientSecret: authConfig.clientSecret,
+		refreshToken: authConfig.refreshToken,
+	});
+
+	return refreshResult.access_token;
+}
 
 async function createListAndAddContacts(listName, emailArray, jobId, totalStudents, accessToken) {
 	const MAX_EMAILS_PER_REQUEST = 10;
@@ -96,10 +134,11 @@ export async function createZohoContactList(jobEmailDoc) {
 		const jobId = jobEmailDoc?.payload?.jobId;
 		const eligibleStudents = jobEmailDoc?.payload?.eligibleStudents || [];
 
-		const accessToken = await getCurrentAccessTokenFromMongo();
+		// Ensure we have a valid access token (refresh if needed)
+		const accessToken = await ensureValidAccessToken();
 
 		if (!accessToken) {
-			throw new Error('No valid access token found in MongoDB');
+			throw new Error('Failed to obtain valid access token');
 		}
 
 		// Extract email addresses, prioritizing personal email over college email

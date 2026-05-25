@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import JobEmail from '../models/JobEmail.js';
-import { createZohoContactList } from '../zoho/jobContactList.js';
+import { createZohoContactList, getListAdvancedDetails } from '../zoho/jobContactList.js';
 
 const router = Router();
 
@@ -158,6 +158,42 @@ router.patch('/job/:jobId/mark-true', async (req, res) => {
 		res.json(updatedJob);
 	} catch (error) {
 		res.status(500).json({ message: 'Failed to mark job email true', error: error.message });
+	}
+});
+
+router.get('/job/:jobId/list-details', async (req, res) => {
+	try {
+		const jobId = Number(req.params.jobId);
+		const filtertype = req.query.filtertype || 'sentcampaigns';
+		const fromindex = Number(req.query.fromindex) || 1;
+		const range = Number(req.query.range) || 100;
+
+		if (Number.isNaN(jobId)) {
+			return res.status(400).json({ message: 'jobId must be a number' });
+		}
+
+		const job = await JobEmail.findOne({ 'payload.jobId': jobId });
+
+		if (!job) {
+			return res.status(404).json({ message: 'Job email not found' });
+		}
+
+		const listkey = job.zohoContactListResponse?.listkey;
+
+		if (!listkey) {
+			return res.status(400).json({
+				message: 'No Zoho contact list found for this job. Create the list first by setting status to true.',
+			});
+		}
+
+		const details = await getListAdvancedDetails(listkey, filtertype, fromindex, range);
+
+		res.json(details);
+	} catch (error) {
+		res.status(500).json({
+			message: 'Failed to fetch list details',
+			error: error.message,
+		});
 	}
 });
 

@@ -5,6 +5,8 @@ const ZOHO_CREATE_LIST_URL =
 	'https://campaigns.zoho.in/api/v1.1/addlistandcontacts';
 const ZOHO_ADD_CONTACTS_URL =
 	'https://campaigns.zoho.in/api/v1.1/addlistsubscribersinbulk';
+const ZOHO_GET_LIST_DETAILS_URL =
+	'https://campaigns.zoho.in/api/v1.1/getlistadvanceddetails';
 
 function getAuthConfig() {
 	return {
@@ -27,21 +29,38 @@ async function ensureValidAccessToken() {
 		return token;
 	}
 
-	// Token is invalid or missing, refresh it
+	// Token is invalid or missing, try to refresh using env credentials
 	const authConfig = getAuthConfig();
-	if (!authConfig?.clientId || !authConfig?.clientSecret || !authConfig?.refreshToken) {
-		throw new Error('Cannot refresh token: missing auth config (clientId, clientSecret, refreshToken)');
+	if (authConfig?.clientId && authConfig?.clientSecret && authConfig?.refreshToken) {
+		try {
+			console.log('[zoho-contact-list] token invalid or expired, refreshing from env credentials...');
+
+			const refreshResult = await refreshTokens({
+				clientId: authConfig.clientId,
+				clientSecret: authConfig.clientSecret,
+				refreshToken: authConfig.refreshToken,
+			});
+
+			return refreshResult.access_token;
+		} catch (refreshError) {
+			console.warn('[zoho-contact-list] refresh from env failed, attempting fallback to stored token', {
+				message: refreshError.message,
+			});
+
+			// Fallback: try to get a fresh token from Mongo (maybe another instance refreshed it)
+			const fallbackToken = await getCurrentAccessTokenFromMongo();
+			if (fallbackToken && isTokenValid()) {
+				console.log('[zoho-contact-list] using fallback token from Mongo');
+				return fallbackToken;
+			}
+
+			// If fallback also fails, throw the original refresh error
+			throw refreshError;
+		}
 	}
 
-	console.log('[zoho-contact-list] token invalid or expired, refreshing...');
-
-	const refreshResult = await refreshTokens({
-		clientId: authConfig.clientId,
-		clientSecret: authConfig.clientSecret,
-		refreshToken: authConfig.refreshToken,
-	});
-
-	return refreshResult.access_token;
+	// No env config and no valid token in Mongo
+	throw new Error('Cannot get valid access token: missing auth config or valid stored token');
 }
 
 async function createListAndAddContacts(listName, emailArray, jobId, totalStudents, accessToken) {
@@ -176,6 +195,70 @@ export async function createZohoContactList(jobEmailDoc) {
 		};
 	} catch (error) {
 		console.error('[zoho-contact-list] failed', {
+			message: error.message,
+			status: error.response?.status,
+			data: error.response?.data,
+		});
+
+		throw error;
+	}
+}
+
+export async function getListAdvancedDetails(listkey, filtertype = 'sentcampaigns', fromindex = 1, range = 100) {
+	try {
+		if (!listkey) {
+			throw new Error('listkey is required');
+		}
+
+		// Ensure we have a valid access token (refresh if needed)
+		const accessToken = await ensureValidAccessToken();
+
+		if (!accessToken) {
+			throw new Error('Failed to obtain valid access token');
+		}
+
+		const payload = {
+			resfmt: 'JSON',
+			listkey: listkey,
+			filtertype: filtertype,
+			fromindex: String(fromindex),
+			range: String(range),
+		};
+
+		console.log('[zoho-list-details] fetching advanced details', {
+			listkey,
+			filtertype,
+		});
+
+		const { data } = await axios.post(
+			ZOHO_GET_LIST_DETAILS_URL,
+			new URLSearchParams(payload),
+			{
+				headers: {
+					Authorization: `Zoho-oauthtoken ${accessToken}`,
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				timeout: 20000,
+			}
+		);
+
+		if (data.code !== '0') {
+			throw new Error(
+				`Failed to fetch list details: ${data.message || 'Unknown error'}`
+			);
+		}
+
+		console.log('[zoho-list-details] details fetched successfully', {
+			listkey,
+			totalContacts: data.list_details?.noofcontacts,
+		});
+
+		return {
+			listkey,
+			response: data,
+		};
+	} catch (error) {
+		console.error('[zoho-list-details] failed', {
 			message: error.message,
 			status: error.response?.status,
 			data: error.response?.data,

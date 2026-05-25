@@ -2,9 +2,9 @@ import axios from 'axios';
 import { getCurrentAccessTokenFromMongo, isTokenValid, refreshTokens } from './tokenmanager.js';
 
 const ZOHO_CREATE_LIST_URL =
-	'https://campaigns.zoho.com/api/v1.1/addlistandcontacts';
+	'https://campaigns.zoho.in/api/v1.1/addlistandcontacts';
 const ZOHO_ADD_CONTACTS_URL =
-	'https://campaigns.zoho.com/api/v1.1/addlistsubscribersinbulk';
+	'https://campaigns.zoho.in/api/v1.1/addlistsubscribersinbulk';
 
 function getAuthConfig() {
 	return {
